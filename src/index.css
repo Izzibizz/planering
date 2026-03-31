@@ -1,0 +1,61 @@
+@import "tailwindcss";
+
+:root {
+  font-family: Inter, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  line-height: 1.5;
+  font-weight: 400;
+  color: #1c1917;
+  background: #f5f5f4;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  min-height: 100vh;
+  background: #f5f5f4;
+  color: #1c1917;
+}
+
+#root {
+  min-height: 100vh;
+}
+
+.note-editor:empty::before {
+  content: attr(data-placeholder);
+  color: #78716c;
+}
+
+.note-editor p,
+.note-editor ul,
+.note-editor ol {
+  margin: 0 0 0.75rem;
+}
+
+.note-editor strong {
+  font-weight: 700;
+}
+
+.note-editor em {
+  font-style: italic;
+}
+
+.note-editor u {
+  text-decoration: underline;
+}
+
+.note-editor ul,
+.note-editor ol {
+  padding-left: 1.25rem;
+}
+
+.note-editor ul {
+  list-style: disc;
+}
+
+.note-editor ol {
+  list-style: decimal;
+}
