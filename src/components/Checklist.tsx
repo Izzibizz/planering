@@ -87,95 +87,97 @@ function SortableChecklistItem({
         transform: CSS.Transform.toString(transform),
         transition,
       }}
-      className={`flex items-start gap-3 rounded-2xl border px-4 py-3 ${
+      className={`rounded-2xl border px-4 py-3 ${
         isDragging
           ? "border-emerald-400 bg-emerald-50 shadow-lg"
           : "border-stone-200 bg-stone-50"
       }`}
     >
-      <input
-        type="checkbox"
-        checked={item.done}
-        onChange={onToggle}
-        className={`mt-1 h-5 w-5 ${theme.checkbox}`}
-      />
+      <div className="flex items-start gap-3">
+        <input
+          type="checkbox"
+          checked={item.done}
+          onChange={onToggle}
+          className={`mt-1 h-5 w-5 ${theme.checkbox}`}
+        />
 
-      <div className="flex-1">
-        {isEditing ? (
-          <input
-            type="text"
-            value={editingText}
-            autoFocus
-            onChange={(event) => onEditingTextChange(event.target.value)}
-            onKeyDown={(event) => {
-              if (event.key === "Enter") {
-                event.preventDefault();
-                onSaveEdit();
-              }
+        <div className="min-w-0 flex-1">
+          {isEditing ? (
+            <input
+              type="text"
+              value={editingText}
+              autoFocus
+              onChange={(event) => onEditingTextChange(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === "Enter") {
+                  event.preventDefault();
+                  onSaveEdit();
+                }
 
-              if (event.key === "Escape") {
-                onCancelEdit();
-              }
-            }}
-            className={`w-full rounded-xl border border-stone-300 bg-white px-3 py-2 text-stone-900 outline-none ${theme.focus}`}
-          />
-        ) : (
-          <span
-            className={`block text-left ${
-              item.done ? "text-stone-400 line-through" : "text-stone-800"
-            }`}
-          >
-            {item.text}
-          </span>
-        )}
-      </div>
+                if (event.key === "Escape") {
+                  onCancelEdit();
+                }
+              }}
+              className={`w-full rounded-xl border border-stone-300 bg-white px-3 py-2 text-stone-900 outline-none ${theme.focus}`}
+            />
+          ) : (
+            <span
+              className={`block w-full text-left ${
+                item.done ? "text-stone-400 line-through" : "text-stone-800"
+              }`}
+            >
+              {item.text}
+            </span>
+          )}
 
-      <div className="flex flex-wrap gap-2">
-        {isEditing ? (
-          <>
-            <button
-              type="button"
-              onClick={onSaveEdit}
-              className={`rounded-lg px-3 py-2 text-sm font-medium ${theme.button}`}
-            >
-              Spara
-            </button>
-            <button
-              type="button"
-              onClick={onCancelEdit}
-              className="rounded-lg border border-stone-300 px-3 py-2 text-sm font-medium text-stone-700 transition hover:bg-stone-100"
-            >
-              Avbryt
-            </button>
-          </>
-        ) : (
-          <>
-            <button
-              type="button"
-              {...attributes}
-              {...listeners}
-              className="touch-none rounded-lg border border-stone-300 px-3 py-2 text-sm font-medium text-stone-700 transition hover:bg-stone-100 cursor-grab active:cursor-grabbing"
-              aria-label={`Använd pilarna för att flytta ${item.text}`}
-              title="Flytta upp eller ned"
-            >
-              ↑↓
-            </button>
-            <button
-              type="button"
-              onClick={onStartEdit}
-              className="rounded-lg border border-stone-300 px-3 py-2 text-sm font-medium text-stone-700 transition hover:bg-stone-100"
-            >
-              Redigera
-            </button>
-            <button
-              type="button"
-              onClick={onRemove}
-              className="rounded-lg border border-rose-300 px-3 py-2 text-sm font-medium text-rose-700 transition hover:bg-rose-50"
-            >
-              Ta bort
-            </button>
-          </>
-        )}
+          <div className="mt-3 flex flex-wrap gap-2">
+            {isEditing ? (
+              <>
+                <button
+                  type="button"
+                  onClick={onSaveEdit}
+                  className={`rounded-lg px-3 py-2 text-sm font-medium ${theme.button}`}
+                >
+                  Spara
+                </button>
+                <button
+                  type="button"
+                  onClick={onCancelEdit}
+                  className="rounded-lg border border-stone-300 px-3 py-2 text-sm font-medium text-stone-700 transition hover:bg-stone-100"
+                >
+                  Avbryt
+                </button>
+              </>
+            ) : (
+              <>
+                <button
+                  type="button"
+                  {...attributes}
+                  {...listeners}
+                  className="touch-none cursor-grab rounded-lg border border-stone-300 px-3 py-2 text-sm font-medium text-stone-700 transition hover:bg-stone-100 active:cursor-grabbing"
+                  aria-label={`Använd pilarna för att flytta ${item.text}`}
+                  title="Flytta upp eller ned"
+                >
+                  ↑↓
+                </button>
+                <button
+                  type="button"
+                  onClick={onStartEdit}
+                  className="rounded-lg border border-stone-300 px-3 py-2 text-sm font-medium text-stone-700 transition hover:bg-stone-100"
+                >
+                  Redigera
+                </button>
+                <button
+                  type="button"
+                  onClick={onRemove}
+                  className="rounded-lg border border-rose-300 px-3 py-2 text-sm font-medium text-rose-700 transition hover:bg-rose-50"
+                >
+                  Ta bort
+                </button>
+              </>
+            )}
+          </div>
+        </div>
       </div>
     </div>
   );

@@ -171,13 +171,13 @@ function App() {
               )}
             </div>
 
-            <div className="flex w-full max-w-sm flex-col gap-4">
+            <div className="flex w-full max-w-[450px] flex-col gap-4 xl:self-start">
               {featuredImage && (
-                <div className="overflow-hidden rounded-3xl border border-stone-200 bg-stone-50 shadow-sm">
+                <div className="h-[600px] w-full overflow-hidden rounded-3xl border border-stone-200 bg-stone-50 shadow-sm">
                   <img
                     src={featuredImage.url}
                     alt={featuredImage.alt || pageContent.title}
-                    className="h-56 w-full object-cover"
+                    className="h-full w-full object-contain"
                   />
                 </div>
               )}

@@ -35,10 +35,12 @@ type SortableGalleryCardProps = {
   image: GalleryImage;
   isFeatured: boolean;
   isEditing: boolean;
+  isMenuOpen: boolean;
   captionDraft: string;
   altDraft: string;
   isSubmitting: boolean;
   onOpen: () => void;
+  onToggleMenu: () => void;
   onStartEdit: () => void;
   onSave: () => void;
   onCancel: () => void;
@@ -52,10 +54,12 @@ function SortableGalleryCard({
   image,
   isFeatured,
   isEditing,
+  isMenuOpen,
   captionDraft,
   altDraft,
   isSubmitting,
   onOpen,
+  onToggleMenu,
   onStartEdit,
   onSave,
   onCancel,
@@ -71,7 +75,10 @@ function SortableGalleryCard({
     transform,
     transition,
     isDragging,
-  } = useSortable({ id: image.id, disabled: isEditing || isSubmitting });
+  } = useSortable({
+    id: image.id,
+    disabled: isEditing || isSubmitting || !isMenuOpen,
+  });
 
   return (
     <article
@@ -85,101 +92,120 @@ function SortableGalleryCard({
             : "border-stone-200"
       }`}
     >
-      <button type="button" onClick={onOpen} className="block w-full">
-        <img
-          src={image.thumbnailUrl}
-          alt={image.alt || image.caption || "Galleri bild"}
-          className="h-48 w-full object-cover"
-        />
-      </button>
+      <div className="relative aspect-[3/4] bg-stone-100">
+        <button
+          type="button"
+          onClick={onOpen}
+          className="flex h-full w-full items-center justify-center"
+        >
+          <img
+            src={image.url}
+            alt={image.alt || image.caption || "Galleri bild"}
+            className="h-full w-full object-contain"
+          />
+        </button>
 
-      <div className="space-y-3 p-4">
-        <div className="flex items-start justify-between gap-2">
-          <div>
-            <p className="text-sm font-semibold text-stone-900">
-              {image.caption || image.alt || "Bild utan bildtext"}
-            </p>
-            <p className="text-xs text-stone-500">
-              {isFeatured ? "Vald som huvudbild" : "Galleri-bild"}
-            </p>
-          </div>
-
+        <div className="absolute right-3 top-3 z-10">
           <button
             type="button"
-            {...attributes}
-            {...listeners}
-            disabled={isEditing || isSubmitting}
-            className="touch-none rounded-lg border border-stone-300 px-2 py-1 text-sm font-medium text-stone-700 transition hover:bg-stone-100 disabled:cursor-not-allowed disabled:opacity-50"
-            aria-label={`Dra för att ändra ordning på ${image.caption || image.alt || "bilden"}`}
-            title="Dra för att ändra ordning"
+            onClick={onToggleMenu}
+            className="rounded-full bg-stone-950/75 px-3 py-1 text-lg font-semibold text-white backdrop-blur transition hover:bg-stone-950"
+            aria-label={`Öppna bildmeny för ${image.caption || image.alt || "bilden"}`}
+            title="Öppna bildmeny"
           >
-            ↑↓
+            ⋯
           </button>
         </div>
 
-        {isEditing ? (
-          <div className="space-y-2 rounded-xl border border-stone-200 bg-stone-50 p-3">
-            <label className="block text-xs font-medium text-stone-700">
-              Bildtext
-              <input
-                type="text"
-                value={captionDraft}
-                onChange={(event) => onCaptionChange(event.target.value)}
-                className="mt-1 w-full rounded-lg border border-stone-300 bg-white px-3 py-2 text-sm text-stone-900 outline-none focus:border-violet-500"
-              />
-            </label>
-            <label className="block text-xs font-medium text-stone-700">
-              Alt-text
-              <input
-                type="text"
-                value={altDraft}
-                onChange={(event) => onAltChange(event.target.value)}
-                className="mt-1 w-full rounded-lg border border-stone-300 bg-white px-3 py-2 text-sm text-stone-900 outline-none focus:border-violet-500"
-              />
-            </label>
-            <div className="flex flex-wrap gap-2">
-              <button
-                type="button"
-                onClick={onSave}
-                className="rounded-lg bg-violet-200 px-3 py-2 text-sm font-medium text-stone-900 transition hover:bg-violet-300"
-              >
-                Spara
-              </button>
-              <button
-                type="button"
-                onClick={onCancel}
-                className="rounded-lg border border-stone-300 px-3 py-2 text-sm font-medium text-stone-700 transition hover:bg-stone-100"
-              >
-                Avbryt
-              </button>
+        {isMenuOpen && (
+          <div className="absolute inset-x-3 bottom-3 z-10 rounded-2xl bg-white/95 p-3 text-stone-900 shadow-xl backdrop-blur">
+            <div className="mb-3 flex items-center justify-between gap-2">
+              <p className="text-sm font-semibold text-stone-900">
+                {image.caption || image.alt || "Bild utan bildtext"}
+              </p>
+              {isFeatured && (
+                <span className="rounded-full bg-emerald-100 px-2 py-1 text-xs font-medium text-emerald-700">
+                  Huvudbild
+                </span>
+              )}
             </div>
-          </div>
-        ) : (
-          <div className="flex flex-wrap gap-2">
-            <button
-              type="button"
-              onClick={onSetFeatured}
-              disabled={isSubmitting || isFeatured}
-              className="rounded-lg border border-emerald-300 px-3 py-2 text-sm font-medium text-emerald-700 transition hover:bg-emerald-50 disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              {isFeatured ? "Vald" : "Välj som huvudbild"}
-            </button>
-            <button
-              type="button"
-              onClick={onStartEdit}
-              disabled={isSubmitting}
-              className="rounded-lg border border-stone-300 px-3 py-2 text-sm font-medium text-stone-700 transition hover:bg-stone-100 disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              Redigera text
-            </button>
-            <button
-              type="button"
-              onClick={onRemove}
-              disabled={isSubmitting}
-              className="rounded-lg border border-rose-300 px-3 py-2 text-sm font-medium text-rose-700 transition hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              Ta bort
-            </button>
+
+            {isEditing ? (
+              <div className="space-y-2 rounded-xl border border-stone-200 bg-stone-50 p-3">
+                <label className="block text-xs font-medium text-stone-700">
+                  Bildtext
+                  <input
+                    type="text"
+                    value={captionDraft}
+                    onChange={(event) => onCaptionChange(event.target.value)}
+                    className="mt-1 w-full rounded-lg border border-stone-300 bg-white px-3 py-2 text-sm text-stone-900 outline-none focus:border-violet-500"
+                  />
+                </label>
+                <label className="block text-xs font-medium text-stone-700">
+                  Alt-text
+                  <input
+                    type="text"
+                    value={altDraft}
+                    onChange={(event) => onAltChange(event.target.value)}
+                    className="mt-1 w-full rounded-lg border border-stone-300 bg-white px-3 py-2 text-sm text-stone-900 outline-none focus:border-violet-500"
+                  />
+                </label>
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={onSave}
+                    className="rounded-lg bg-violet-200 px-3 py-2 text-sm font-medium text-stone-900 transition hover:bg-violet-300"
+                  >
+                    Spara
+                  </button>
+                  <button
+                    type="button"
+                    onClick={onCancel}
+                    className="rounded-lg border border-stone-300 px-3 py-2 text-sm font-medium text-stone-700 transition hover:bg-stone-100"
+                  >
+                    Avbryt
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  {...attributes}
+                  {...listeners}
+                  disabled={isSubmitting}
+                  className="touch-none rounded-lg border border-stone-300 px-3 py-2 text-sm font-medium text-stone-700 transition hover:bg-stone-100 disabled:cursor-not-allowed disabled:opacity-50"
+                  aria-label={`Dra för att ändra ordning på ${image.caption || image.alt || "bilden"}`}
+                  title="Dra för att ändra ordning"
+                >
+                  ↑↓ Ordna
+                </button>
+                <button
+                  type="button"
+                  onClick={onSetFeatured}
+                  disabled={isSubmitting || isFeatured}
+                  className="rounded-lg border border-emerald-300 px-3 py-2 text-sm font-medium text-emerald-700 transition hover:bg-emerald-50 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {isFeatured ? "Vald" : "Välj som huvudbild"}
+                </button>
+                <button
+                  type="button"
+                  onClick={onStartEdit}
+                  disabled={isSubmitting}
+                  className="rounded-lg border border-stone-300 px-3 py-2 text-sm font-medium text-stone-700 transition hover:bg-stone-100 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  Redigera text
+                </button>
+                <button
+                  type="button"
+                  onClick={onRemove}
+                  disabled={isSubmitting}
+                  className="rounded-lg border border-rose-300 px-3 py-2 text-sm font-medium text-rose-700 transition hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  Ta bort
+                </button>
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -197,6 +223,7 @@ function ImageGallery() {
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [editingImageId, setEditingImageId] = useState<string | null>(null);
+  const [openMenuImageId, setOpenMenuImageId] = useState<string | null>(null);
   const [captionDraft, setCaptionDraft] = useState("");
   const [altDraft, setAltDraft] = useState("");
   const [lightboxImageId, setLightboxImageId] = useState<string | null>(null);
@@ -325,6 +352,7 @@ function ImageGallery() {
 
       await loadPlanner();
       setMessage("Huvudbilden uppdaterades.");
+      setOpenMenuImageId(null);
     } catch (updateError) {
       setError(
         updateError instanceof Error
@@ -358,6 +386,9 @@ function ImageGallery() {
       if (lightboxImageId === imageId) {
         setLightboxImageId(null);
       }
+      if (openMenuImageId === imageId) {
+        setOpenMenuImageId(null);
+      }
     } catch (removeError) {
       setError(
         removeError instanceof Error
@@ -370,6 +401,7 @@ function ImageGallery() {
   };
 
   const startEditing = (image: GalleryImage) => {
+    setOpenMenuImageId(image.id);
     setEditingImageId(image.id);
     setCaptionDraft(image.caption || image.alt || "");
     setAltDraft(image.alt || image.caption || "");
@@ -379,6 +411,28 @@ function ImageGallery() {
     setEditingImageId(null);
     setCaptionDraft("");
     setAltDraft("");
+    setOpenMenuImageId(null);
+  };
+
+  const toggleImageMenu = (imageId: string) => {
+    if (openMenuImageId === imageId) {
+      if (editingImageId === imageId) {
+        setEditingImageId(null);
+        setCaptionDraft("");
+        setAltDraft("");
+      }
+
+      setOpenMenuImageId(null);
+      return;
+    }
+
+    if (editingImageId && editingImageId !== imageId) {
+      setEditingImageId(null);
+      setCaptionDraft("");
+      setAltDraft("");
+    }
+
+    setOpenMenuImageId(imageId);
   };
 
   const saveImageDetails = async (imageId: string) => {
@@ -425,13 +479,37 @@ function ImageGallery() {
     setMessage(null);
 
     try {
-      const response = await fetch(getApiUrl("/api/gallery/reorder"), {
+      const orderedImages = orderedIds
+        .map((id) => images.find((image) => image.id === id))
+        .filter((image): image is GalleryImage => Boolean(image));
+
+      if (orderedImages.length !== images.length) {
+        throw new Error("Kunde inte läsa den nya bildordningen.");
+      }
+
+      let response = await fetch(getApiUrl("/api/gallery/reorder"), {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({ orderedIds }),
       });
+
+      if (response.status === 404) {
+        response = await fetch(getApiUrl("/api/planner"), {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            gallery: {
+              ...gallery,
+              images: orderedImages,
+            },
+            updatedAt: new Date().toISOString(),
+          }),
+        });
+      }
 
       if (!response.ok) {
         const payload = await response.json().catch(() => null);
@@ -441,6 +519,7 @@ function ImageGallery() {
       }
 
       await loadPlanner();
+      setOpenMenuImageId(null);
       setMessage("Ordningen på bilderna uppdaterades.");
     } catch (reorderError) {
       setError(
@@ -627,8 +706,8 @@ function ImageGallery() {
         ) : (
           <>
             <p className="mb-4 text-sm text-stone-500">
-              Klicka på en bild för helskärmsläge och dra i `↑↓` för att byta
-              ordning.
+              Klicka på en bild för helskärmsläge och tryck på `⋯` för att visa
+              val, text och sortering.
             </p>
 
             <DndContext
@@ -644,6 +723,7 @@ function ImageGallery() {
                   {images.map((image) => {
                     const isFeatured = gallery.featuredImageId === image.id;
                     const isEditing = editingImageId === image.id;
+                    const isMenuOpen = openMenuImageId === image.id;
 
                     return (
                       <SortableGalleryCard
@@ -651,10 +731,15 @@ function ImageGallery() {
                         image={image}
                         isFeatured={isFeatured}
                         isEditing={isEditing}
+                        isMenuOpen={isMenuOpen}
                         captionDraft={captionDraft}
                         altDraft={altDraft}
                         isSubmitting={isSubmitting}
-                        onOpen={() => setLightboxImageId(image.id)}
+                        onOpen={() => {
+                          setOpenMenuImageId(null);
+                          setLightboxImageId(image.id);
+                        }}
+                        onToggleMenu={() => toggleImageMenu(image.id)}
                         onStartEdit={() => startEditing(image)}
                         onSave={() => void saveImageDetails(image.id)}
                         onCancel={cancelEditing}
