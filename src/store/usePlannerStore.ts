@@ -45,10 +45,14 @@ type PlannerStore = PlannerData & {
   clearCompleted: (listKey: ChecklistKey) => void;
 };
 
-const API_BASE_URL = (
-  import.meta.env.VITE_API_BASE_URL ?? "https://planering-backend.onrender.com"
-).replace(/\/+$/, "");
+const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL ?? "").replace(
+  /\/+$/,
+  "",
+);
 const LOCAL_SNAPSHOT_KEY = "planering-zustand-snapshot";
+const API_LABEL = API_BASE_URL || "the configured /api proxy";
+
+const getApiUrl = (path: string) => `${API_BASE_URL}${path}`;
 
 const defaultPlannerData: PlannerData = {
   pageContent: {
@@ -167,9 +171,21 @@ const normalizePlannerData = (value: unknown): PlannerData => {
   const notes =
     candidate.calendarNotes && typeof candidate.calendarNotes === "object"
       ? Object.fromEntries(
-          Object.entries(candidate.calendarNotes).filter(
-            (entry): entry is [string, string] => typeof entry[1] === "string",
-          ),
+          Object.entries(candidate.calendarNotes).flatMap(([date, value]) => {
+            if (typeof value === "string") {
+              return [[date, value]];
+            }
+
+            if (value && typeof value === "object" && "content" in value) {
+              const noteValue = value as { content?: unknown };
+
+              if (typeof noteValue.content === "string") {
+                return [[date, noteValue.content]];
+              }
+            }
+
+            return [];
+          }),
         )
       : {};
 
@@ -263,7 +279,7 @@ const syncPlannerSnapshot = async (snapshot: PlannerData) => {
 
   for (const attempt of attempts) {
     try {
-      const response = await fetch(`${API_BASE_URL}${attempt.path}`, {
+      const response = await fetch(getApiUrl(attempt.path), {
         method: attempt.method,
         headers: {
           "Content-Type": "application/json",
@@ -306,14 +322,14 @@ const queueSync = (
       await syncPlannerSnapshot(snapshot);
       set({
         syncState: "synced",
-        syncMessage: "Changes synced with planering-backend.",
+        syncMessage: `Changes synced via ${API_LABEL}.`,
         error: null,
       });
     } catch (error) {
       set({
         syncState: "error",
         syncMessage:
-          "Saved locally. The backend still needs a write route and CORS allow-origin.",
+          "Saved locally. The backend save route still needs to accept updates.",
         error:
           error instanceof Error ? error.message : "Could not sync with the backend.",
       });
@@ -339,7 +355,7 @@ export const usePlannerStore = create<PlannerStore>((set, get) => ({
     const localSnapshot = readLocalSnapshot();
 
     try {
-      const response = await fetch(`${API_BASE_URL}/api/planner`);
+      const response = await fetch(getApiUrl("/api/planner"));
       if (!response.ok) {
         throw new Error(`GET /api/planner returned ${response.status}`);
       }
@@ -352,7 +368,7 @@ export const usePlannerStore = create<PlannerStore>((set, get) => ({
         ...mergedData,
         isLoading: false,
         syncState: "synced",
-        syncMessage: `Connected to ${API_BASE_URL}`,
+        syncMessage: `Connected through ${API_LABEL}.`,
         error: null,
       });
     } catch (error) {
