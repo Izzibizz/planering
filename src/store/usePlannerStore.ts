@@ -9,10 +9,25 @@ export type ChecklistItem = {
   createdAt?: string;
 };
 
+export type GalleryImage = {
+  id: string;
+  publicId?: string;
+  url: string;
+  thumbnailUrl: string;
+  alt: string;
+  caption: string;
+  uploadedAt?: string;
+};
+
 type PlannerPageContent = {
   badge: string;
   title: string;
   subtitle: string;
+};
+
+type GalleryState = {
+  featuredImageId: string | null;
+  images: GalleryImage[];
 };
 
 type ChecklistGroup = {
@@ -26,6 +41,7 @@ type PlannerData = {
   pageContent: PlannerPageContent;
   checklists: Record<ChecklistKey, ChecklistGroup>;
   calendarNotes: Record<string, string>;
+  gallery: GalleryState;
   updatedAt: string | null;
 };
 
@@ -37,9 +53,20 @@ type PlannerStore = PlannerData & {
   syncMessage: string;
   error: string | null;
   loadPlanner: () => Promise<void>;
+  updatePageContent: (updates: Partial<PlannerPageContent>) => void;
   updateNote: (dateKey: string, html: string) => void;
   clearNote: (dateKey: string) => void;
   addChecklistItem: (listKey: ChecklistKey, text: string) => void;
+  updateChecklistItemText: (
+    listKey: ChecklistKey,
+    itemId: string,
+    text: string,
+  ) => void;
+  reorderChecklistItems: (
+    listKey: ChecklistKey,
+    activeItemId: string,
+    overItemId: string,
+  ) => void;
   toggleChecklistItem: (listKey: ChecklistKey, itemId: string) => void;
   removeChecklistItem: (listKey: ChecklistKey, itemId: string) => void;
   clearCompleted: (listKey: ChecklistKey) => void;
@@ -49,8 +76,9 @@ const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL ?? "").replace(
   /\/+$/,
   "",
 );
-const LOCAL_SNAPSHOT_KEY = "planering-zustand-snapshot";
-const API_LABEL = API_BASE_URL || "the configured /api proxy";
+const LOCAL_SNAPSHOT_KEY = "planering-zustand-snapshot-v2";
+const LEGACY_LOCAL_SNAPSHOT_KEY = "planering-zustand-snapshot";
+const API_LABEL = API_BASE_URL || "/api-proxyn";
 
 const getApiUrl = (path: string) => `${API_BASE_URL}${path}`;
 
@@ -59,31 +87,40 @@ const defaultPlannerData: PlannerData = {
     badge: "Planering",
     title: "Utställning Västerås 25 april - 10 maj 2026",
     subtitle:
-      "A light planning view for your exhibition calendar, personal tasks, and artwork checklist.",
+      "En enkel planeringsvy för utställningskalendern, personliga uppgifter och konstlistan.",
   },
   checklists: {
     personal: {
       id: "personal",
-      title: "My Checklist",
-      description: "Add tasks, mark them as done, and remove them anytime.",
+      title: "Min checklista",
+      description:
+        "Lägg till uppgifter, markera dem som klara och ta bort dem när du vill.",
       items: [
-        { id: "personal-1", text: "Plan tomorrow's tasks", done: true },
-        { id: "personal-2", text: "Buy groceries", done: false },
-        { id: "personal-3", text: "Reply to emails", done: false },
+        {
+          id: "personal-1",
+          text: "Planera morgondagens uppgifter",
+          done: true,
+        },
+        { id: "personal-2", text: "Handla mat", done: false },
+        { id: "personal-3", text: "Svara på mejl", done: false },
       ],
     },
     artworks: {
       id: "artworks",
-      title: "Artworks to do",
-      description: "Track artwork ideas, ongoing pieces, and finished work.",
+      title: "Konst att göra",
+      description: "Följ idéer, pågående verk och färdiga arbeten.",
       items: [
-        { id: "artwork-1", text: "Finish portrait sketch", done: false },
-        { id: "artwork-2", text: "Prime the new canvas", done: false },
-        { id: "artwork-3", text: "Photograph completed artwork", done: true },
+        { id: "artwork-1", text: "Gör klart porträttskissen", done: false },
+        { id: "artwork-2", text: "Grunda den nya duken", done: false },
+        { id: "artwork-3", text: "Fotografera det färdiga verket", done: true },
       ],
     },
   },
   calendarNotes: {},
+  gallery: {
+    featuredImageId: null,
+    images: [],
+  },
   updatedAt: null,
 };
 
@@ -132,13 +169,57 @@ const toChecklistGroup = (
 
   return {
     id: key,
-    title: typeof candidate.title === "string" ? candidate.title : fallback.title,
+    title:
+      typeof candidate.title === "string" ? candidate.title : fallback.title,
     description:
       typeof candidate.description === "string"
         ? candidate.description
         : fallback.description,
     items: toChecklistItems(candidate.items ?? fallback.items),
   };
+};
+
+const toGalleryImages = (value: unknown): GalleryImage[] => {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return value.reduce<GalleryImage[]>((images, item, index) => {
+    if (!item || typeof item !== "object") {
+      return images;
+    }
+
+    const candidate = item as Partial<GalleryImage>;
+    const url = typeof candidate.url === "string" ? candidate.url : "";
+
+    if (!url) {
+      return images;
+    }
+
+    images.push({
+      id: String(candidate.id ?? `gallery-image-${index + 1}`),
+      publicId:
+        typeof candidate.publicId === "string" ? candidate.publicId : undefined,
+      url,
+      thumbnailUrl:
+        typeof candidate.thumbnailUrl === "string"
+          ? candidate.thumbnailUrl
+          : url,
+      alt: typeof candidate.alt === "string" ? candidate.alt : "",
+      caption:
+        typeof candidate.caption === "string"
+          ? candidate.caption
+          : typeof candidate.alt === "string"
+            ? candidate.alt
+            : "",
+      uploadedAt:
+        typeof candidate.uploadedAt === "string"
+          ? candidate.uploadedAt
+          : undefined,
+    });
+
+    return images;
+  }, []);
 };
 
 const normalizePlannerData = (value: unknown): PlannerData => {
@@ -148,6 +229,10 @@ const normalizePlannerData = (value: unknown): PlannerData => {
 
   const candidate = value as Partial<PlannerData> & {
     checklists?: Partial<Record<ChecklistKey, unknown>>;
+    gallery?: {
+      featuredImageId?: unknown;
+      images?: unknown;
+    };
   };
 
   const pageContent =
@@ -189,6 +274,17 @@ const normalizePlannerData = (value: unknown): PlannerData => {
         )
       : {};
 
+  const galleryImages = toGalleryImages(candidate.gallery?.images);
+  const featuredImageId =
+    typeof candidate.gallery?.featuredImageId === "string"
+      ? candidate.gallery.featuredImageId
+      : null;
+  const normalizedFeaturedImageId = galleryImages.some(
+    (image) => image.id === featuredImageId,
+  )
+    ? featuredImageId
+    : (galleryImages[0]?.id ?? null);
+
   return {
     pageContent,
     checklists: {
@@ -204,36 +300,18 @@ const normalizePlannerData = (value: unknown): PlannerData => {
       ),
     },
     calendarNotes: notes,
-    updatedAt: typeof candidate.updatedAt === "string" ? candidate.updatedAt : null,
+    gallery: {
+      featuredImageId: normalizedFeaturedImageId,
+      images: galleryImages,
+    },
+    updatedAt:
+      typeof candidate.updatedAt === "string" ? candidate.updatedAt : null,
   };
 };
 
-const mergePlannerData = (
-  remoteData: PlannerData,
-  localData: PlannerData | null,
-): PlannerData => {
-  if (!localData) {
-    return remoteData;
-  }
-
-  return {
-    pageContent: remoteData.pageContent,
-    checklists: {
-      personal:
-        localData.checklists.personal.items.length > 0
-          ? localData.checklists.personal
-          : remoteData.checklists.personal,
-      artworks:
-        localData.checklists.artworks.items.length > 0
-          ? localData.checklists.artworks
-          : remoteData.checklists.artworks,
-    },
-    calendarNotes:
-      Object.keys(localData.calendarNotes).length > 0
-        ? localData.calendarNotes
-        : remoteData.calendarNotes,
-    updatedAt: localData.updatedAt ?? remoteData.updatedAt,
-  };
+type HealthPayload = {
+  status?: string;
+  storage?: "file" | "mongo";
 };
 
 const readLocalSnapshot = (): PlannerData | null => {
@@ -249,10 +327,23 @@ const readLocalSnapshot = (): PlannerData | null => {
   }
 };
 
+const clearLegacyLocalSnapshot = () => {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  try {
+    window.localStorage.removeItem(LEGACY_LOCAL_SNAPSHOT_KEY);
+  } catch {
+    // Ignore local storage cleanup errors.
+  }
+};
+
 const toSnapshot = (state: PlannerStore | PlannerData): PlannerData => ({
   pageContent: state.pageContent,
   checklists: state.checklists,
   calendarNotes: state.calendarNotes,
+  gallery: state.gallery,
   updatedAt: state.updatedAt,
 });
 
@@ -275,7 +366,7 @@ const syncPlannerSnapshot = async (snapshot: PlannerData) => {
     { path: "/api/planner", method: "POST" },
   ];
 
-  let lastError = "The backend save endpoint is not available yet.";
+  let lastError = "Backendens sparfunktion är inte tillgänglig ännu.";
 
   for (const attempt of attempts) {
     try {
@@ -294,7 +385,7 @@ const syncPlannerSnapshot = async (snapshot: PlannerData) => {
       lastError = `${attempt.method} ${attempt.path} returned ${response.status}`;
     } catch (error) {
       lastError =
-        error instanceof Error ? error.message : "Unable to reach the backend.";
+        error instanceof Error ? error.message : "Kunde inte nå backend.";
     }
   }
 
@@ -314,7 +405,7 @@ const queueSync = (
   }
 
   window.clearTimeout(syncTimeout);
-  set({ syncState: "saving", syncMessage: "Saving changes...", error: null });
+  set({ syncState: "saving", syncMessage: "Sparar ändringar...", error: null });
 
   syncTimeout = window.setTimeout(async () => {
     try {
@@ -322,16 +413,17 @@ const queueSync = (
       await syncPlannerSnapshot(snapshot);
       set({
         syncState: "synced",
-        syncMessage: `Changes synced via ${API_LABEL}.`,
+        syncMessage: `Ändringarna synkades via ${API_LABEL}.`,
         error: null,
       });
     } catch (error) {
       set({
         syncState: "error",
-        syncMessage:
-          "Saved locally. The backend save route still needs to accept updates.",
+        syncMessage: "Sparat lokalt. Backend kunde inte ta emot ändringarna.",
         error:
-          error instanceof Error ? error.message : "Could not sync with the backend.",
+          error instanceof Error
+            ? error.message
+            : "Kunde inte synka med backend.",
       });
     }
   }, 600);
@@ -341,35 +433,53 @@ export const usePlannerStore = create<PlannerStore>((set, get) => ({
   ...defaultPlannerData,
   isLoading: false,
   syncState: "idle",
-  syncMessage: "Ready.",
+  syncMessage: "Redo.",
   error: null,
 
   loadPlanner: async () => {
     set({
       isLoading: true,
       syncState: "loading",
-      syncMessage: "Connecting to planering-backend...",
+      syncMessage: "Ansluter till planering-backend...",
       error: null,
     });
 
     const localSnapshot = readLocalSnapshot();
 
     try {
-      const response = await fetch(getApiUrl("/api/planner"));
-      if (!response.ok) {
-        throw new Error(`GET /api/planner returned ${response.status}`);
+      const [plannerResponse, healthPayload] = await Promise.all([
+        fetch(getApiUrl("/api/planner")),
+        fetch(getApiUrl("/api/health"))
+          .then(async (response) => {
+            if (!response.ok) {
+              return null;
+            }
+
+            return (await response.json()) as HealthPayload;
+          })
+          .catch(() => null),
+      ]);
+
+      if (!plannerResponse.ok) {
+        throw new Error(`GET /api/planner returned ${plannerResponse.status}`);
       }
 
-      const remoteData = normalizePlannerData(await response.json());
-      const mergedData = mergePlannerData(remoteData, localSnapshot);
-      writeLocalSnapshot(mergedData);
+      const remoteData = normalizePlannerData(await plannerResponse.json());
+      clearLegacyLocalSnapshot();
+      writeLocalSnapshot(remoteData);
+
+      const usingFallbackStorage = healthPayload?.storage === "file";
 
       set({
-        ...mergedData,
+        ...remoteData,
         isLoading: false,
-        syncState: "synced",
-        syncMessage: `Connected through ${API_LABEL}.`,
-        error: null,
+        syncState: usingFallbackStorage ? "error" : "synced",
+        syncMessage: usingFallbackStorage
+          ? "Ansluten, men backend använder tillfällig reservlagring."
+          : `Ansluten via ${API_LABEL}.`,
+        error: usingFallbackStorage
+          ? "Render når inte MongoDB ännu, så data kan återställas efter en omstart."
+          : null,
       });
     } catch (error) {
       const fallbackData = localSnapshot ?? defaultPlannerData;
@@ -378,14 +488,37 @@ export const usePlannerStore = create<PlannerStore>((set, get) => ({
         isLoading: false,
         syncState: localSnapshot ? "idle" : "error",
         syncMessage: localSnapshot
-          ? "Using your saved local planner data."
-          : "Could not connect to the backend.",
+          ? "Visar din lokalt sparade planering."
+          : "Kunde inte ansluta till backend.",
         error:
           error instanceof Error
             ? error.message
-            : "Unable to load planner data.",
+            : "Kunde inte ladda planeringen.",
       });
     }
+  },
+
+  updatePageContent: (updates) => {
+    set((state) => {
+      const nextPageContent = {
+        ...state.pageContent,
+        ...updates,
+      };
+
+      const snapshot = toSnapshot({
+        ...state,
+        pageContent: nextPageContent,
+        updatedAt: new Date().toISOString(),
+      });
+      writeLocalSnapshot(snapshot);
+
+      return {
+        pageContent: nextPageContent,
+        updatedAt: snapshot.updatedAt,
+      };
+    });
+
+    queueSync(get, set);
   },
 
   updateNote: (dateKey, html) => {
@@ -453,6 +586,82 @@ export const usePlannerStore = create<PlannerStore>((set, get) => ({
         },
         ...currentChecklist.items,
       ];
+
+      const nextChecklists = {
+        ...state.checklists,
+        [listKey]: {
+          ...currentChecklist,
+          items: nextItems,
+        },
+      };
+
+      const snapshot = toSnapshot({
+        ...state,
+        checklists: nextChecklists,
+        updatedAt: new Date().toISOString(),
+      });
+      writeLocalSnapshot(snapshot);
+
+      return {
+        checklists: nextChecklists,
+        updatedAt: snapshot.updatedAt,
+      };
+    });
+
+    queueSync(get, set);
+  },
+
+  updateChecklistItemText: (listKey, itemId, text) => {
+    const trimmedText = text.trim();
+    if (!trimmedText) {
+      return;
+    }
+
+    set((state) => {
+      const currentChecklist = state.checklists[listKey];
+      const nextChecklists = {
+        ...state.checklists,
+        [listKey]: {
+          ...currentChecklist,
+          items: currentChecklist.items.map((item) =>
+            item.id === itemId ? { ...item, text: trimmedText } : item,
+          ),
+        },
+      };
+
+      const snapshot = toSnapshot({
+        ...state,
+        checklists: nextChecklists,
+        updatedAt: new Date().toISOString(),
+      });
+      writeLocalSnapshot(snapshot);
+
+      return {
+        checklists: nextChecklists,
+        updatedAt: snapshot.updatedAt,
+      };
+    });
+
+    queueSync(get, set);
+  },
+
+  reorderChecklistItems: (listKey, activeItemId, overItemId) => {
+    set((state) => {
+      const currentChecklist = state.checklists[listKey];
+      const activeIndex = currentChecklist.items.findIndex(
+        (item) => item.id === activeItemId,
+      );
+      const overIndex = currentChecklist.items.findIndex(
+        (item) => item.id === overItemId,
+      );
+
+      if (activeIndex === -1 || overIndex === -1 || activeIndex === overIndex) {
+        return {};
+      }
+
+      const nextItems = [...currentChecklist.items];
+      const [movedItem] = nextItems.splice(activeIndex, 1);
+      nextItems.splice(overIndex, 0, movedItem);
 
       const nextChecklists = {
         ...state.checklists,

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type MouseEvent } from "react";
 import { usePlannerStore } from "../store/usePlannerStore";
 
-const WEEK_DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+const WEEK_DAYS = ["Mån", "Tis", "Ons", "Tor", "Fre", "Lör", "Sön"];
 
 const createDateKey = (date: Date) => {
   const year = date.getFullYear();
@@ -126,17 +126,18 @@ function CalendarPlanner() {
         <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <span className="inline-flex rounded-full border border-emerald-300 bg-emerald-50 px-3 py-1 text-sm font-medium text-emerald-700">
-              Monthly calendar
+              Månadskalender
             </span>
             <h2 className="mt-3 text-2xl font-semibold text-stone-900">
-              {visibleMonth.toLocaleDateString("en-US", {
+              {visibleMonth.toLocaleDateString("sv-SE", {
                 month: "long",
                 year: "numeric",
               })}
             </h2>
             <p className="text-sm text-stone-600">
-              {savedDayCount} saved planning day{savedDayCount === 1 ? "" : "s"}
-              .
+              {savedDayCount} sparad{savedDayCount === 1 ? "" : "e"}{" "}
+              planeringsdag
+              {savedDayCount === 1 ? "" : "ar"}.
             </p>
           </div>
 
@@ -146,21 +147,21 @@ function CalendarPlanner() {
               onClick={() => changeMonth(-1)}
               className="rounded-xl border border-stone-300 bg-stone-50 px-3 py-2 text-sm font-semibold text-stone-700 transition hover:border-emerald-500 hover:text-emerald-700"
             >
-              ← Prev
+              ← Föregående
             </button>
             <button
               type="button"
               onClick={jumpToToday}
               className="rounded-xl border border-stone-300 bg-stone-50 px-3 py-2 text-sm font-semibold text-stone-700 transition hover:border-emerald-500 hover:text-emerald-700"
             >
-              Today
+              Idag
             </button>
             <button
               type="button"
               onClick={() => changeMonth(1)}
               className="rounded-xl border border-stone-300 bg-stone-50 px-3 py-2 text-sm font-semibold text-stone-700 transition hover:border-emerald-500 hover:text-emerald-700"
             >
-              Next →
+              Nästa →
             </button>
           </div>
         </div>
@@ -230,17 +231,14 @@ function CalendarPlanner() {
         <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h2 className="text-2xl font-semibold text-stone-900">
-              Plans for{" "}
-              {selectedDateObject.toLocaleDateString("en-US", {
+              Planer för{" "}
+              {selectedDateObject.toLocaleDateString("sv-SE", {
                 weekday: "long",
                 month: "long",
                 day: "numeric",
                 year: "numeric",
               })}
             </h2>
-            <p className="text-sm text-stone-600">
-              Synced with your shared planner store and backend connection.
-            </p>
           </div>
 
           <button
@@ -248,16 +246,16 @@ function CalendarPlanner() {
             onClick={clearSelectedDayNote}
             className="w-fit rounded-xl border border-rose-300 px-3 py-2 text-sm font-medium text-rose-700 transition hover:bg-rose-50"
           >
-            Clear note
+            Rensa anteckning
           </button>
         </div>
 
         <div className="mb-3 flex flex-wrap gap-2">
           {[
-            { label: "Bold", command: "bold" },
-            { label: "Italic", command: "italic" },
-            { label: "Underline", command: "underline" },
-            { label: "• List", command: "insertUnorderedList" },
+            { label: "Fet", command: "bold" },
+            { label: "Kursiv", command: "italic" },
+            { label: "Understryk", command: "underline" },
+            { label: "• Lista", command: "insertUnorderedList" },
           ].map((action) => (
             <button
               key={action.command}
@@ -276,7 +274,7 @@ function CalendarPlanner() {
           contentEditable
           suppressContentEditableWarning
           onInput={handleEditorInput}
-          data-placeholder="Write your plans for this day here..."
+          data-placeholder="Skriv din planering för den här dagen här..."
           className="note-editor min-h-56 rounded-2xl border border-stone-300 bg-white px-4 py-3 text-stone-900 outline-none transition focus:border-emerald-500"
         />
       </div>
