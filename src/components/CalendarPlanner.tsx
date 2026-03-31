@@ -1,8 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type MouseEvent } from "react";
+import { usePlannerStore } from "../store/usePlannerStore";
 
-type SavedNotes = Record<string, string>;
-
-const NOTES_STORAGE_KEY = "planering-calendar-notes";
 const WEEK_DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
 const createDateKey = (date: Date) => {
@@ -33,14 +31,9 @@ function CalendarPlanner() {
     () => new Date(today.getFullYear(), today.getMonth(), 1),
   );
   const [selectedDate, setSelectedDate] = useState(todayKey);
-  const [notesByDate, setNotesByDate] = useState<SavedNotes>(() => {
-    try {
-      const savedNotes = localStorage.getItem(NOTES_STORAGE_KEY);
-      return savedNotes ? (JSON.parse(savedNotes) as SavedNotes) : {};
-    } catch {
-      return {};
-    }
-  });
+  const notesByDate = usePlannerStore((state) => state.calendarNotes);
+  const updateNote = usePlannerStore((state) => state.updateNote);
+  const clearNote = usePlannerStore((state) => state.clearNote);
 
   const editorRef = useRef<HTMLDivElement>(null);
 
@@ -74,14 +67,6 @@ function CalendarPlanner() {
   }, [visibleMonth]);
 
   useEffect(() => {
-    try {
-      localStorage.setItem(NOTES_STORAGE_KEY, JSON.stringify(notesByDate));
-    } catch {
-      // Ignore local storage write errors.
-    }
-  }, [notesByDate]);
-
-  useEffect(() => {
     if (!editorRef.current) {
       return;
     }
@@ -94,18 +79,7 @@ function CalendarPlanner() {
   const saveCurrentNote = (html: string) => {
     const cleanedHtml = html === "<br>" ? "" : html;
     const plainText = stripHtml(cleanedHtml);
-
-    setNotesByDate((currentNotes) => {
-      const nextNotes = { ...currentNotes };
-
-      if (plainText.length === 0) {
-        delete nextNotes[selectedDate];
-      } else {
-        nextNotes[selectedDate] = cleanedHtml;
-      }
-
-      return nextNotes;
-    });
+    updateNote(selectedDate, plainText.length === 0 ? "" : cleanedHtml);
   };
 
   const handleEditorInput = () => {
@@ -127,11 +101,7 @@ function CalendarPlanner() {
       editorRef.current.innerHTML = "";
     }
 
-    setNotesByDate((currentNotes) => {
-      const nextNotes = { ...currentNotes };
-      delete nextNotes[selectedDate];
-      return nextNotes;
-    });
+    clearNote(selectedDate);
   };
 
   const changeMonth = (direction: number) => {
@@ -269,7 +239,7 @@ function CalendarPlanner() {
               })}
             </h2>
             <p className="text-sm text-stone-600">
-              Saved automatically for this exact date on your device.
+              Synced with your shared planner store and backend connection.
             </p>
           </div>
 

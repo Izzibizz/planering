@@ -1,17 +1,9 @@
-import { useEffect, useMemo, useState, type FormEvent } from "react";
-
-export type ChecklistItem = {
-  id: number;
-  text: string;
-  done: boolean;
-};
+import { useMemo, useState, type FormEvent } from "react";
+import { usePlannerStore, type ChecklistKey } from "../store/usePlannerStore";
 
 type ChecklistProps = {
-  title: string;
-  description: string;
+  listKey: ChecklistKey;
   badge: string;
-  storageKey: string;
-  starterItems: ChecklistItem[];
   inputPlaceholder: string;
   emptyMessage: string;
   accent?: "emerald" | "violet";
@@ -35,75 +27,39 @@ const themes = {
 } as const;
 
 function Checklist({
-  title,
-  description,
+  listKey,
   badge,
-  storageKey,
-  starterItems,
   inputPlaceholder,
   emptyMessage,
   accent = "emerald",
 }: ChecklistProps) {
   const theme = themes[accent];
-
-  const [items, setItems] = useState<ChecklistItem[]>(() => {
-    try {
-      const savedItems = localStorage.getItem(storageKey);
-      return savedItems
-        ? (JSON.parse(savedItems) as ChecklistItem[])
-        : starterItems;
-    } catch {
-      return starterItems;
-    }
-  });
+  const checklist = usePlannerStore((state) => state.checklists[listKey]);
+  const addChecklistItem = usePlannerStore((state) => state.addChecklistItem);
+  const toggleChecklistItem = usePlannerStore(
+    (state) => state.toggleChecklistItem,
+  );
+  const removeChecklistItem = usePlannerStore(
+    (state) => state.removeChecklistItem,
+  );
+  const clearCompleted = usePlannerStore((state) => state.clearCompleted);
   const [newItem, setNewItem] = useState("");
 
+  const items = checklist.items;
   const completedCount = useMemo(
     () => items.filter((item) => item.done).length,
     [items],
   );
 
-  useEffect(() => {
-    try {
-      localStorage.setItem(storageKey, JSON.stringify(items));
-    } catch {
-      // Ignore local storage write errors.
-    }
-  }, [items, storageKey]);
-
   const addItem = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
-    const trimmedItem = newItem.trim();
-    if (!trimmedItem) {
+    if (!newItem.trim()) {
       return;
     }
 
-    setItems((currentItems) => [
-      {
-        id: Date.now(),
-        text: trimmedItem,
-        done: false,
-      },
-      ...currentItems,
-    ]);
+    addChecklistItem(listKey, newItem);
     setNewItem("");
-  };
-
-  const toggleItem = (id: number) => {
-    setItems((currentItems) =>
-      currentItems.map((item) =>
-        item.id === id ? { ...item, done: !item.done } : item,
-      ),
-    );
-  };
-
-  const removeItem = (id: number) => {
-    setItems((currentItems) => currentItems.filter((item) => item.id !== id));
-  };
-
-  const clearCompleted = () => {
-    setItems((currentItems) => currentItems.filter((item) => !item.done));
   };
 
   return (
@@ -116,9 +72,9 @@ function Checklist({
             {badge}
           </span>
           <h2 className="mt-3 text-2xl font-bold text-stone-900 sm:text-3xl">
-            {title}
+            {checklist.title}
           </h2>
-          <p className="mt-2 text-stone-600">{description}</p>
+          <p className="mt-2 text-stone-600">{checklist.description}</p>
         </div>
 
         <div className="rounded-2xl bg-stone-100 px-4 py-3 text-sm text-stone-700">
@@ -161,7 +117,7 @@ function Checklist({
               <input
                 type="checkbox"
                 checked={item.done}
-                onChange={() => toggleItem(item.id)}
+                onChange={() => toggleChecklistItem(listKey, item.id)}
                 className={`h-5 w-5 ${theme.checkbox}`}
               />
 
@@ -175,7 +131,7 @@ function Checklist({
 
               <button
                 type="button"
-                onClick={() => removeItem(item.id)}
+                onClick={() => removeChecklistItem(listKey, item.id)}
                 className="rounded-lg border border-rose-300 px-3 py-2 text-sm font-medium text-rose-700 transition hover:bg-rose-50"
               >
                 Remove
@@ -188,7 +144,7 @@ function Checklist({
       {completedCount > 0 && (
         <button
           type="button"
-          onClick={clearCompleted}
+          onClick={() => clearCompleted(listKey)}
           className={`mt-6 text-sm font-medium transition ${theme.text}`}
         >
           Clear completed items
