@@ -218,7 +218,7 @@ function CalendarPlanner() {
                 </div>
 
                 <p className="truncate text-xs text-stone-500">
-                  {hasNote ? notePreview : "No plans yet"}
+                  {hasNote ? notePreview : ""}
                 </p>
               </button>
             );
